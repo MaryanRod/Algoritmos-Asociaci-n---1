@@ -1,0 +1,221 @@
+---
+title: "Proyecto parte 1"
+author: "María Rodríguez"
+date: "09 de noviembre de 2024"
+output:
+  pdf_document: default
+  html_document:
+    code_folding: show
+---
+
+A continuación se muestra como utilizar los algoritmos de asociación Apriori,
+FP-Growth y Kmeans en las bases de datos de Concursos de Guatecompras
+
+##cargar librerias
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(arules)
+library(caret)
+library(readxl)
+library(dplyr)
+```
+
+# Limpieza y carga de datos
+```{r message=FALSE, warning=FALSE}
+C2016 <- read_excel("2016.xlsx")
+C2017 <- read_excel("2017.xlsx")
+C2018 <- read_excel("2018.xlsx")
+C2019 <- read_excel("2019.xlsx")
+C2020 <- read_excel("2020.xlsx")
+C2021 <- read_excel("2021.xlsx")
+C2022 <- read_excel("2022.xlsx")
+C2023 <- read_excel("2023.xlsx")
+C2024 <- read_excel("2024.xlsx")
+```
+
+##Eliminar la columna fechaCierreRecepciónOfertas
+```{r message=FALSE, warning=FALSE}
+C2016 <- C2016 %>% select(-fechaCierreRecepciónOfertas)
+C2017 <- C2017 %>% select(-fechaCierreRecepciónOfertas)
+C2018 <- C2018 %>% select(-fechaCierreRecepciónOfertas)
+C2019 <- C2019 %>% select(-fechaCierreRecepciónOfertas)
+C2020 <- C2020 %>% select(-fechaCierreRecepciónOfertas)
+C2021 <- C2021 %>% select(-fechaCierreRecepciónOfertas)
+C2022 <- C2022 %>% select(-fechaCierreRecepciónOfertas)
+C2023 <- C2023 %>% select(-fechaCierreRecepciónOfertas)
+C2024 <- C2024 %>% select(-fechaCierreRecepciónOfertas)
+```
+
+##Combinar todos los data frames
+```{r message=FALSE, warning=FALSE}
+concursos_g <- bind_rows(C2016, C2017, C2018, C2019, C2020, C2021, C2022, C2023, C2024)
+```
+
+##Pasar el nombre de las columnas a solo minusculas
+```{r message=FALSE, warning=FALSE}
+colnames(concursos_g) <- tolower(colnames(concursos_g))
+```
+
+
+##seleccionar columnas que se van a utilizar
+```{r message=FALSE, warning=FALSE}
+concursos <- concursos_g %>%
+  select(no,tipoentidad,entidadcompradora,modalidad,nombre,monto,categorías,añodeadjudicación)
+```
+
+##Convertir la variable monto a numerica
+```{r message=FALSE, warning=FALSE}
+concursos$monto <- as.numeric(concursos$monto)
+```
+
+##Eliminar los archivos que ya no se necesitan
+```{r message=FALSE, warning=FALSE}
+remove(C2016,C2017,C2018,C2019,C2020,C2021,C2022,C2023,C2024)
+```
+
+
+## Discretiza todas las columnas no categóricas automáticamente
+```{r message=FALSE, warning=FALSE}
+concursos_discretizados <- discretizeDF(concursos)
+concursos_discretizados <- concursos_discretizados %>%
+  mutate(across(where(is.character), as.factor))
+```
+
+#Aplicar algoritmo de apriori
+
+```{r message=FALSE, warning=FALSE}
+reglas <- apriori(concursos_discretizados, parameter = list(support=0.1, confidence=0.2))
+```
+```{r message=FALSE, warning=FALSE}
+inspect(reglas[0:100])
+```
+
+```{r message=FALSE, warning=FALSE}
+inspect(reglas[101:200])
+```
+
+```{r message=FALSE, warning=FALSE}
+inspect(reglas[201:300])
+```
+
+```{r message=FALSE, warning=FALSE}
+inspect(reglas[301:400])
+```
+
+```{r message=FALSE, warning=FALSE}
+inspect(reglas[401:500])
+```
+
+#Aplicar algoritmo FP-GROWTH
+```{r message=FALSE, warning=FALSE}
+reglas <- fim4r(concursos, method = "fpgrowth", target = "rules", supp = 0.2, conf= 0.5)
+```
+
+
+##Crear dataframe de las reglas
+```{r message=FALSE, warning=FALSE}
+reglasframe <- as(reglas, "data.frame")
+```
+
+##filtrar la variable categorías por construcción
+```{r message=FALSE, warning=FALSE}
+concursos_c <- subset(concursos,categorías=="Construcción y materiales afines")
+```
+
+##aplicar algoritmo
+```{r message=FALSE, warning=FALSE}
+reglas_c <- fim4r(concursos_c, method = "fpgrowth", target = "rules", supp = 0.2, conf= 0.5)
+```
+
+##crear dataframe de las reglas
+```{r message=FALSE, warning=FALSE}
+reglasframe_c <- as(reglas_c, "data.frame")
+```
+
+##filtrar la variable categorías por transporte
+```{r message=FALSE, warning=FALSE}
+concursos_t <- subset(concursos,categorías %in% c("Transporte, repuestos y combustibles","Transporte, repuestos y combustibles,Otros tipos de bienes o servicios","Transporte, repuestos y combustibles,Otros tipos de bienes o servicios,Seguridad y armament","Transporte, repuestos y combustibles,Seguridad y armament"))
+```
+
+##aplicar algoritmo
+```{r message=FALSE, warning=FALSE}
+reglas_t <- fim4r(concursos_t, method = "fpgrowth", target = "rules", supp = 0.2, conf= 0.5)
+```
+
+##crear dataframe de las reglas
+```{r message=FALSE, warning=FALSE}
+reglasframe_t <- as(reglas_t, "data.frame")
+```
+
+
+#Análisis de Clúster
+
+##filtrar los datos por entidades del setor salud
+```{r message=FALSE, warning=FALSE}
+concursos_salud <- subset(concursos,
+                          entidadcompradora %in% c("INSTITUTO GUATEMALTECO DE SEGURIDAD SOCIAL -IGSS-","MINISTERIO DE SALUD PÚBLICA"))
+```
+
+##filtrar variables a utilizar
+```{r message=FALSE, warning=FALSE}
+concursos_salud <- concursos_salud %>% 
+  select(no, entidadcompradora, añodeadjudicación, monto)
+```
+
+
+##convertir los datos categoricos a factores
+```{r message=FALSE, warning=FALSE}
+concursos_salud$entidadcompradora <- as.factor(concursos_salud$entidadcompradora)
+##ahora convertir a numericos
+concursos_salud$entidadcompradora_num <- as.numeric(concursos_salud$entidadcompradora)
+```
+
+
+##seleccionar nuevaente las variables a utilizar
+```{r message=FALSE, warning=FALSE}
+concursos_salud2 <- concursos_salud %>% 
+  select(no, entidadcompradora_num, añodeadjudicación, monto)
+```
+
+
+##aplicar algoritmo de Kmeans
+```{r message=FALSE, warning=FALSE}
+cluster <- kmeans(concursos_salud2, centers = 4)
+concursos_salud$cluster <- as.factor(cluster$cluster)
+```
+
+
+# graficar
+```{r message=FALSE, warning=FALSE}
+ggplot(concursos_salud, aes(x = añodeadjudicación, y = monto, color = entidadcompradora, shape = cluster)) +
+  geom_point() +
+  geom_point(data = as.data.frame(cluster$centers), aes(x = añodeadjudicación, y = monto), color = "black", size = 4, shape = 17) +
+  labs(title = "Clustering de Concursos de Salud: Año de Adjudicación vs Monto",
+       x = "Año de Adjudicación", y = "Monto") +
+  scale_y_continuous(labels = scales::comma_format()) + 
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 8),  
+    axis.title = element_text(size = 6),   
+    axis.text = element_text(size = 6),
+    legend.position = "bottom",          
+    legend.key.size = unit(0.5, "cm"),   
+    legend.text = element_text(size = 4), 
+    legend.title = element_text(size = 4), 
+    legend.box = "horizontal",           
+    legend.box.spacing = unit(0.2, "cm") 
+  ) +
+    guides(color = guide_legend(ncol = 1))
+
+```
+
+
+
+
+
+
+
+
+
+
+
