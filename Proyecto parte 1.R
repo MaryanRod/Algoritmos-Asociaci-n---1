@@ -1,5 +1,5 @@
 ---
-  title: "Proyecto - Concurso Guatecompras"
+  title: "Proyecto Parte 1- Concurso Guatecompras"
 output: html_notebook
 ---
 #instalar librerias
@@ -56,7 +56,7 @@ concursos$monto <- as.numeric(concursos$monto)
 remove(C2016,C2017,C2018,C2019,C2020,C2021,C2022,C2023,C2024)
 
 
-## Discretiza todas las columnas no categóricas automáticamente
+##Discretiza todas las columnas no categóricas automáticamente
 concursos_discretizados <- discretizeDF(concursos)
 concursos_discretizados <- concursos_discretizados %>%
   mutate(across(where(is.character), as.factor))
