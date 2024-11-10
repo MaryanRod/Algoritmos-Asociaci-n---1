@@ -11,7 +11,7 @@ output:
 A continuación se muestra como utilizar los algoritmos de asociación Apriori,
 FP-Growth y Kmeans en las bases de datos de Concursos de Guatecompras
 
-##cargar librerias
+## cargar librerias
 ```{r message=FALSE, warning=FALSE}
 library(tidyverse)
 library(arules)
@@ -33,7 +33,7 @@ C2023 <- read_excel("2023.xlsx")
 C2024 <- read_excel("2024.xlsx")
 ```
 
-##Eliminar la columna fechaCierreRecepciónOfertas
+## Eliminar la columna fechaCierreRecepciónOfertas
 ```{r message=FALSE, warning=FALSE}
 C2016 <- C2016 %>% select(-fechaCierreRecepciónOfertas)
 C2017 <- C2017 %>% select(-fechaCierreRecepciónOfertas)
@@ -46,29 +46,29 @@ C2023 <- C2023 %>% select(-fechaCierreRecepciónOfertas)
 C2024 <- C2024 %>% select(-fechaCierreRecepciónOfertas)
 ```
 
-##Combinar todos los data frames
+## Combinar todos los data frames
 ```{r message=FALSE, warning=FALSE}
 concursos_g <- bind_rows(C2016, C2017, C2018, C2019, C2020, C2021, C2022, C2023, C2024)
 ```
 
-##Pasar el nombre de las columnas a solo minusculas
+## Pasar el nombre de las columnas a solo minusculas
 ```{r message=FALSE, warning=FALSE}
 colnames(concursos_g) <- tolower(colnames(concursos_g))
 ```
 
 
-##seleccionar columnas que se van a utilizar
+## Seleccionar columnas que se van a utilizar
 ```{r message=FALSE, warning=FALSE}
 concursos <- concursos_g %>%
   select(no,tipoentidad,entidadcompradora,modalidad,nombre,monto,categorías,añodeadjudicación)
 ```
 
-##Convertir la variable monto a numerica
+## Convertir la variable monto a numerica
 ```{r message=FALSE, warning=FALSE}
 concursos$monto <- as.numeric(concursos$monto)
 ```
 
-##Eliminar los archivos que ya no se necesitan
+## Eliminar los archivos que ya no se necesitan
 ```{r message=FALSE, warning=FALSE}
 remove(C2016,C2017,C2018,C2019,C2020,C2021,C2022,C2023,C2024)
 ```
@@ -81,7 +81,7 @@ concursos_discretizados <- concursos_discretizados %>%
   mutate(across(where(is.character), as.factor))
 ```
 
-#Aplicar algoritmo de apriori
+# Aplicar algoritmo de apriori
 
 ```{r message=FALSE, warning=FALSE}
 reglas <- apriori(concursos_discretizados, parameter = list(support=0.1, confidence=0.2))
@@ -106,64 +106,64 @@ inspect(reglas[301:400])
 inspect(reglas[401:500])
 ```
 
-#Aplicar algoritmo FP-GROWTH
+# Aplicar algoritmo FP-GROWTH
 ```{r message=FALSE, warning=FALSE}
 reglas <- fim4r(concursos, method = "fpgrowth", target = "rules", supp = 0.2, conf= 0.5)
 ```
 
 
-##Crear dataframe de las reglas
+## Crear dataframe de las reglas
 ```{r message=FALSE, warning=FALSE}
 reglasframe <- as(reglas, "data.frame")
 ```
 
-##filtrar la variable categorías por construcción
+## Filtrar la variable categorías por construcción
 ```{r message=FALSE, warning=FALSE}
 concursos_c <- subset(concursos,categorías=="Construcción y materiales afines")
 ```
 
-##aplicar algoritmo
+## Aplicar algoritmo
 ```{r message=FALSE, warning=FALSE}
 reglas_c <- fim4r(concursos_c, method = "fpgrowth", target = "rules", supp = 0.2, conf= 0.5)
 ```
 
-##crear dataframe de las reglas
+## Crear dataframe de las reglas
 ```{r message=FALSE, warning=FALSE}
 reglasframe_c <- as(reglas_c, "data.frame")
 ```
 
-##filtrar la variable categorías por transporte
+## Filtrar la variable categorías por transporte
 ```{r message=FALSE, warning=FALSE}
 concursos_t <- subset(concursos,categorías %in% c("Transporte, repuestos y combustibles","Transporte, repuestos y combustibles,Otros tipos de bienes o servicios","Transporte, repuestos y combustibles,Otros tipos de bienes o servicios,Seguridad y armament","Transporte, repuestos y combustibles,Seguridad y armament"))
 ```
 
-##aplicar algoritmo
+## Aplicar algoritmo
 ```{r message=FALSE, warning=FALSE}
 reglas_t <- fim4r(concursos_t, method = "fpgrowth", target = "rules", supp = 0.2, conf= 0.5)
 ```
 
-##crear dataframe de las reglas
+## Crear dataframe de las reglas
 ```{r message=FALSE, warning=FALSE}
 reglasframe_t <- as(reglas_t, "data.frame")
 ```
 
 
-#Análisis de Clúster
+# Análisis de Clúster
 
-##filtrar los datos por entidades del setor salud
+## Filtrar los datos por entidades del setor salud
 ```{r message=FALSE, warning=FALSE}
 concursos_salud <- subset(concursos,
                           entidadcompradora %in% c("INSTITUTO GUATEMALTECO DE SEGURIDAD SOCIAL -IGSS-","MINISTERIO DE SALUD PÚBLICA"))
 ```
 
-##filtrar variables a utilizar
+## Filtrar variables a utilizar
 ```{r message=FALSE, warning=FALSE}
 concursos_salud <- concursos_salud %>% 
   select(no, entidadcompradora, añodeadjudicación, monto)
 ```
 
 
-##convertir los datos categoricos a factores
+## Convertir los datos categoricos a factores
 ```{r message=FALSE, warning=FALSE}
 concursos_salud$entidadcompradora <- as.factor(concursos_salud$entidadcompradora)
 ##ahora convertir a numericos
@@ -171,21 +171,21 @@ concursos_salud$entidadcompradora_num <- as.numeric(concursos_salud$entidadcompr
 ```
 
 
-##seleccionar nuevaente las variables a utilizar
+## Seleccionar nuevaente las variables a utilizar
 ```{r message=FALSE, warning=FALSE}
 concursos_salud2 <- concursos_salud %>% 
   select(no, entidadcompradora_num, añodeadjudicación, monto)
 ```
 
 
-##aplicar algoritmo de Kmeans
+## Aplicar algoritmo de Kmeans
 ```{r message=FALSE, warning=FALSE}
 cluster <- kmeans(concursos_salud2, centers = 4)
 concursos_salud$cluster <- as.factor(cluster$cluster)
 ```
 
 
-# graficar
+# Graficar Clúster
 ```{r message=FALSE, warning=FALSE}
 ggplot(concursos_salud, aes(x = añodeadjudicación, y = monto, color = entidadcompradora, shape = cluster)) +
   geom_point() +
